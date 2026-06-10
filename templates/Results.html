@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+        body{
+            background: linear-gradient(135deg,#9fd3c7, #d6fff6 );
+            min-height:100vh;
+            font-family:Verdana, Geneva, Tahoma, sans-serif;
+            padding:40px;
+        }
+        .container{
+            max-width:1000px;
+            margin:auto;
+            background:white;
+            border-radius:25px;
+            padding:40px;
+            box-shadow:0px 10px 30px rgba(0,0,0,0.15);
+            text-align:center;
+        }
+        h1{
+            color:#142d4c;
+            font-size:42px;
+            margin-bottom:25px;
+        }
+        h2{
+            color:#385170;
+            margin-bottom:20px;
+        }
+        .damage-list{
+            list-style:none;
+            margin-bottom:30px;
+        }
+        .damage-list li{
+            background:#f4f8fa;
+            width:70%;
+            margin:12px auto;
+            padding:15px;
+            border-left:6px solid #142d4c;
+            border-radius:12px;
+            color:#142d4c;
+            font-weight:bold;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.08);
+        }
+        .result-image{
+            border-radius:20px;
+            margin-top:15px;
+            box-shadow: 0px 10px 25px rgba(0,0,0,0.2);
+            max-width:900px;
+            width:auto;
+            height:auto;
+        }
+        .back-btn{
+            display:inline-block;
+            margin-top:35px;
+            padding:14px 30px;
+            background:#142d4c;
+            color:white;
+            text-decoration:none;
+            border-radius:50px;
+            font-weight:bold;
+            transition:0.3s;
+        }
+        .back-btn:hover{
+            transform:translateY(-3px);
+            box-shadow: 0px 8px 20px rgba(20,45,76,0.35);
+        }
+        .summary{
+            margin-bottom:25px;
+            color:#385170;
+            font-size:18px;
+        }
+    </style>
+</head>
+<body>  
+    <div class="container">
+        <h1>Damage Detection Result</h1>
+        <p class="summary">Analysis Completed!</p>
+        <h2>Detected Damages</h2>
+        <ul class="damage-list">
+            {% for damage in damages %}
+                <li>{{ damage }}</li>
+            {% endfor %}
+        </ul>
+        <img
+            src="{{ url_for('static', filename=image_path) }}"
+            width="800" class="result-image">
+        <br><br>
+        <a href="/download-report">
+            <button class="back-btn">
+                Download Report
+            </button>
+        </a>
+        <br><br>
+        <a href="/" class="back-btn">
+            Analyze Another Vehicle
+        </a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+uploads/
+static/results/
+
+Damage_Report.pdf
+
+venv/
+.env

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INSURANCE</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+        }
+        body{
+            background: linear-gradient(135deg,#9fd3c7,#d6fff6);
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+            color:#385170;
+            min-height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+        .container {
+            width:80%;
+            max-width:800px;
+            background:white;
+            padding:50px;
+            border-radius:25px;
+            text-align:center;
+            box-shadow:0 10px 30px rgba(0,0,0,0.15);
+        }
+        h1{
+            font-size:45px;
+            margin-bottom:15px;
+            color:#142d4c;
+            letter-spacing:1px;
+        }
+        .subtitle{
+            font-size:18px;
+            margin-bottom:35px;
+            color:#385170;
+        }
+        input[type="file"]{
+            width:100%;
+            padding:18px;
+            border:3px dashed #385170;
+            border-radius:15px;
+            background:#f8f9fa;
+            cursor:pointer;
+            font-size:16px;
+            margin-bottom:30px;
+        }
+        input[type="file"]:hover{
+            background:#eef7f5;
+        }
+        button{
+            padding:14px 35px;
+            border:none;
+            border-radius:50px;
+            color:white;
+            font-weight:bold;
+            font-size:18px;
+            background:#142d4c;
+            cursor:pointer;
+            transition:0.3s;
+        }
+        button:hover{
+            transform:translateY(-3px);
+            box-shadow:0 8px 20px rgba(20,45,76,0.35);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CAR DAMAGE DETECTION</h1>
+        <p class="subtitle">Upload the car image to identify the damage!</p>
+        <form action="/classify" method="post" enctype="multipart/form-data">
+            <input type="file" name="damage" accept="image/*"><br><br>
+            <button type="submit">UPLOAD</button>
+        </form>
+    </div>
+</body>
+</html>

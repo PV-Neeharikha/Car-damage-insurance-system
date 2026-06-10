@@ -1,0 +1,81 @@
+def download_report():
+    title_style = ParagraphStyle(
+    "TitleStyle",
+    parent=styles["Title"],
+    fontSize=24,
+    textColor=colors.HexColor("#1F4E79"),
+    alignment=TA_CENTER)
+    section_style = ParagraphStyle(
+        "SectionStyle",
+        parent=styles["Heading2"],
+        fontSize=16,
+        textColor=colors.HexColor("#385723"))
+    pdf_path = "Damage_Report.pdf"
+    doc = SimpleDocTemplate(pdf_path)
+    styles = getSampleStyleSheet()
+    elements = []
+    # Title
+    elements.append(Paragraph("Vehicle Damage Assessment Report",styles["Title"]))
+    elements.append(Spacer(1, 12))
+    # Total damages
+    elements.append(Paragraph(f"Total Damages Detected: {len(latest_damages)}",styles["Heading2"] ))
+    elements.append(Spacer(1, 12))
+    # Damage list
+    elements.append(Paragraph( "Detected Damages",styles["Heading2"] ))
+    elements.append(Spacer(1, 10))
+    for damage in latest_damages:
+        elements.append(Paragraph(damage,styles["BodyText"]))
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"Total Visible Parts Detected: {len(set(latest_parts))}",styles["BodyText"]))
+    elements.append(Spacer(1, 10))
+    # Processed image
+    elements.append(Paragraph("Processed Damage Image",styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+    img = Image(latest_image,width=400,height=300)
+    elements.append(img)
+    elements.append(Spacer(1, 20))
+    # Vehicle Inspection Table
+    report_data = [["Detected Part", "Status"]]
+    damaged_parts = []
+    for damage in latest_damage_classes:
+        mapped_part = damage_to_part.get(damage)
+        if mapped_part:
+            damaged_parts.append(mapped_part)
+    # Combine parts detected by Parts Model
+    # and parts inferred from Damage Model
+    all_parts = set(latest_parts)
+    all_parts.update(damaged_parts)
+    for part in sorted(all_parts):
+        if part in damaged_parts:
+            status = "⚠ Damaged"
+        else:
+            status = "✓ No Damage"
+        report_data.append(
+            [part, status]
+        )
+    elements.append(Paragraph("Vehicle Inspection Summary",styles["Heading2"]))
+    elements.append(Spacer(1, 12))
+    table = Table(report_data)
+    table.setStyle(
+        TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige)]))
+    elements.append(table)
+    elements.append(Spacer(1,20))
+    elements.append(Paragraph("Detected Vehicle Parts",styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+
+    for part in sorted(set(latest_parts)):elements.append(Paragraph(part,styles["BodyText"]))
+
+    elements.append(Spacer(1, 20))
+    elements.append(
+    Paragraph("Damage Assessment Summary",styles["Heading2"]))
+    elements.append(Paragraph(f"The AI system detected {len(latest_damages)} damaged component(s) in the uploaded vehicle image.",styles["BodyText"]))
+    doc.build(elements)
+    return send_file(
+        pdf_path,
+        as_attachment=True
+    )
