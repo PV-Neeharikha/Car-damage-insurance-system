@@ -79,26 +79,28 @@
         }
     </style>
 </head>
-<body>  
+<body>
     <div class="container">
-        <h1>Damage Detection Result</h1>
-        <p class="summary">Analysis Completed!</p>
-        <h2>Detected Damages</h2>
-        <ul class="damage-list">
-            {% for damage in damages %}
-                <li>{{ damage }}</li>
-            {% endfor %}
-        </ul>
-        <img
-            src="{{ url_for('static', filename=image_path) }}"
-            width="800" class="result-image">
+        <h1>Vehicle Damage Analysis</h1>
+        <p class="summary">Analysis Completed Successfully</p>
+        {% for side, data in results.items() %}
+            <hr style="margin:40px 0;">
+            <h2>{{ side }} VIEW</h2>
+            <ul class="damage-list">
+                {% if data.damages %}
+                    {% for damage in data.damages %}
+                        <li>{{ damage }}</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No Damages Detected</li>
+                {% endif %}
+            </ul>
+            <img src="{{ url_for('static', filename=data.image) }}"class="result-image"width="800">
+        {% endfor %}
         <br><br>
         <a href="/download-report">
-            <button class="back-btn">
-                Download Report
-            </button>
-        </a>
-        <br><br>
+            <button class="back-btn">Download Report</button>
+        </a><br><br>
         <a href="/" class="back-btn">
             Analyze Another Vehicle
         </a>
