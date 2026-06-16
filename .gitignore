@@ -1,6 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
 .vscode/
-text
+
+# User uploads
 uploads/
 static/results/
-Damage_Report.pdf
-__pycache__/
+
+# Generated reports
+*.pdf
+
+# Training outputs
+runs/
+
+# Virtual environments
+venv/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db

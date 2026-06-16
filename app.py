@@ -14,13 +14,21 @@ from datetime import datetime
 
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.styles import ParagraphStyle
+from tensorflow.keras.models import load_model
+import numpy as np
+import json
+
 
 app=Flask(__name__)
 
 inspection_results = {}
 
-damage_model = YOLO("damage_model.pt") #Damage detection model
-parts_model = YOLO("parts_model.pt") #Part detection model
+damage_model = YOLO("models/damage_model.pt") #Damage detection model
+parts_model = YOLO("models/parts_model.pt") #Part detection model
+severity_model = load_model("models/efficientnetb0_car_damage_severity.keras")# Severity datection model
+
+with open("class_names.json","r") as f:
+    class_names = json.load(f)
 
 damage_colors = {
 
@@ -77,6 +85,38 @@ damage_to_part = {
     "Runningboard-Damage": "Rocker-panel"
 }
 
+AMBIGUOUS_CLASSES = {
+    "doorouter-dent"
+}
+
+#Used to calculate the severity
+
+def predict_severity(crop):
+
+    crop = cv2.resize(
+        crop,
+        (224,224)
+    )
+
+    crop = cv2.cvtColor(
+        crop,
+        cv2.COLOR_BGR2RGB
+    )
+
+    crop = np.expand_dims(
+        crop,
+        axis=0
+    )
+
+    preds = severity_model.predict(
+        crop,
+        verbose=0
+    )[0]
+
+    pred_idx = np.argmax(preds)
+
+    return class_names[pred_idx]
+
 #Used to calculate the overlap
 
 def calculate_iou(boxA, boxB):
@@ -108,7 +148,9 @@ def process_vehicle_side(file, side):
     damage_results = damage_model.predict(source=upload_path,save=False) #Damage result
     parts_results = parts_model.predict(source=upload_path,save=False) #Part result
     
-    img = cv2.imread(upload_path) #Read the image
+    original_img = cv2.imread(upload_path)
+
+    img = original_img.copy() #Read the image
 
     detected_parts = []
     part_boxes=[]
@@ -127,21 +169,36 @@ def process_vehicle_side(file, side):
     damage_classes = []
     detected_damages = [] 
     damage_boxes=[]
+    damage_details = []
+    severity_results = []
 
     for box in damage_results[0].boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0])
+        height,width = original_img.shape[:2]
+        padding = 5
+        crop_x1 = max(0,x1-padding)
+        crop_y1 = max(0,y1-padding)
+        crop_x2 = min(width,x2+padding)
+        crop_y2 = min(height,y2+padding)
+        damage_crop = original_img[
+            crop_y1:crop_y2,
+            crop_x1:crop_x2
+        ]
+        
+        severity = predict_severity(damage_crop)
+        severity_results.append(severity)
         class_id = int(box.cls[0]) #The damage ID
         class_name = damage_model.names[class_id] #The damage Name
         damage_boxes.append({"damage": class_name,"box": (x1, y1, x2, y2)})
         damage_classes.append(class_name)
         friendly_name = display_names.get(class_name,class_name)# Proper name
         confidence = float(box.conf[0]) #The model's confidence score
-
+        damage_details.append({"damage": class_name,"severity": severity,"confidence": confidence,"box": (x1,y1,x2,y2)})
+        
         damage_number = len(detected_damages) + 1
         detected_damages.append(
-            f"{damage_number} → {friendly_name} ({confidence:.0%})"
+            f"{damage_number} → {friendly_name} | Severity: {severity.title()} | ({confidence:.0%})"
         ) #Add the damages to detected_damages
-
         color = damage_colors.get(
             class_name,
             (0, 0, 255)
@@ -194,9 +251,9 @@ def process_vehicle_side(file, side):
     output_path = os.path.join("static","results",f"{side}_{file.filename}")#Storing the final image in static/results
 
     cv2.imwrite(output_path, img)
-    return {"damages": detected_damages,"damage_classes": damage_classes,"parts": detected_parts,"part_boxes": part_boxes,"damage_boxes": damage_boxes,"image": f"results/{side}_{file.filename}"}
+    return {"damages": detected_damages,"damage_classes": damage_classes,"parts": detected_parts,"part_boxes": part_boxes,"damage_boxes": damage_boxes,"damage_details": damage_details,"severity_results": severity_results,"image": f"results/{side}_{file.filename}"}
 
-#Used for report 
+#Used for ambiguous classes
 
 def get_damaged_parts(data):
 
@@ -222,30 +279,34 @@ def get_damaged_parts(data):
                 best_iou = iou
                 best_part = part_item["name"]
 
-        # Parts Model found matching component
+        # Ambiguous classes → use IoU
 
-        if best_part:
+        if damage_name in AMBIGUOUS_CLASSES:
 
-            damaged_parts.add(best_part)
+            if best_part and best_iou > 0.20:
 
-        # Parts Model missed component
+                damaged_parts.add(best_part)
+
+            continue
+
+        # Normal classes → direct mapping
+
+        mapped_part = damage_to_part.get(
+            damage_name
+        )
+
+        if mapped_part:
+
+            damaged_parts.add(mapped_part)
 
         else:
 
-            mapped_part = damage_to_part.get(damage_name)
-
-            if mapped_part:
-
-                damaged_parts.add(mapped_part)
-
-            else:
-
-                damaged_parts.add(
-                    display_names.get(
-                        damage_name,
-                        damage_name
-                    )
+            damaged_parts.add(
+                display_names.get(
+                    damage_name,
+                    damage_name
                 )
+            )
 
     return damaged_parts
 
@@ -383,67 +444,158 @@ def download_report():
 
         elements.append(Spacer(1,10))
 
-        damaged_parts = get_damaged_parts(data)
+        damaged_parts = set()
+        part_severity = {}
 
-        table_data = [["Component", "Status"]]
+        for item in data["damage_details"]:
 
+            damage_name = item["damage"]
+
+            # Ambiguous classes -> IoU mapping
+
+            if damage_name in AMBIGUOUS_CLASSES:
+
+                damage_box = item["box"]
+
+                best_part = None
+                best_iou = 0
+
+                for part_item in data["part_boxes"]:
+
+                    iou = calculate_iou(
+                        damage_box,
+                        part_item["box"]
+                    )
+
+                    if iou > best_iou:
+
+                        best_iou = iou
+                        best_part = part_item["name"]
+
+                if best_part and best_iou > 0.20:
+
+                    damaged_parts.add(best_part)
+                    part_severity[best_part] = item["severity"]
+
+            # Normal classes -> direct mapping
+
+            else:
+
+                mapped_part = damage_to_part.get(
+                    damage_name
+                )
+
+                if mapped_part:
+
+                    damaged_parts.add(mapped_part)
+                    part_severity[mapped_part] = item["severity"]
+
+        print(f"\n{side}")
+        print("DAMAGED PARTS =", damaged_parts)
         all_components = set(data["parts"])
-
-        # Add components inferred from Damage Model
 
         for damaged in damaged_parts:
             all_components.add(damaged)
 
+        table_data = [
+            ["Component", "Status", "Severity"]
+        ]
         for part in sorted(all_components):
+
             status = (
                 "Damaged"
                 if part in damaged_parts
                 else "No Damage"
             )
-            table_data.append([part, status])
-        
-        table = Table(table_data,colWidths=[220,120])
+
+            severity = "-"
+
+            if status == "Damaged":
+
+                severity = part_severity.get(
+                    part,
+                    "-"
+                )
+            print(
+    f"{side} | "
+    f"Part={part} | "
+    f"Status={status} | "
+    f"Severity={severity}"
+)
+            table_data.append([
+                part,
+                status,
+                severity.title()
+                if severity != "-"
+                else "-"
+            ])
+
+        table = Table(
+            table_data,
+            colWidths=[180,120,100]
+        )
 
         table_style = [
             ('BACKGROUND',(0,0),(-1,0),colors.darkblue),
             ('TEXTCOLOR',(0,0),(-1,0),colors.white),
             ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
-            ('GRID',(0,0),(-1,-1),1,colors.black)]
+            ('GRID',(0,0),(-1,-1),1,colors.black)
+        ]
 
         for row in range(1,len(table_data)):
-            if table_data[row][1] == "Damaged":
+
+            status = table_data[row][1]
+            severity = str(table_data[row][2]).lower()
+
+            if severity == "severe":
 
                 table_style.append(
                     (
                         'BACKGROUND',
                         (0,row),
                         (-1,row),
-                        colors.HexColor("#F4CCCC")))
-                
-            else:
+                        colors.HexColor("#F4CCCC")
+                    )
+                )
+
+            elif severity == "moderate":
 
                 table_style.append(
                     (
                         'BACKGROUND',
                         (0,row),
                         (-1,row),
-                        colors.HexColor("#D9EAD3") ))
+                        colors.HexColor("#FCE5CD")
+                    )
+                )
 
-        table.setStyle(TableStyle(table_style))
+            elif severity == "minor":
+
+                table_style.append(
+                    (
+                        'BACKGROUND',
+                        (0,row),
+                        (-1,row),
+                        colors.HexColor("#D9EAD3")
+                    )
+                )
+
+            elif status == "No Damage":
+
+                table_style.append(
+                    (
+                        'BACKGROUND',
+                        (0,row),
+                        (-1,row),
+                        colors.HexColor("#E8F5E9")
+                    )
+                )
+
+        table.setStyle(
+            TableStyle(table_style)
+        )
 
         elements.append(table)
-
-        elements.append(Spacer(1,15))
-
-        elements.append(Spacer(1,10))
-
-        elements.append(Paragraph("<b>Detected Damage Types</b>",styles["BodyText"]))
-
-        if data["damages"]:
-            for damage in data["damages"]:
-                elements.append(Paragraph(f"• {damage}",styles["BodyText"]))
-        else:
-            elements.append(Paragraph("No visible damages detected.",styles["BodyText"]))
 
         elements.append(Spacer(1,20))
         if index != len(sides)-1:
