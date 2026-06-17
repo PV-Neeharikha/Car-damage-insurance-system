@@ -84,6 +84,7 @@
         <h1>Vehicle Damage Analysis</h1>
         <p class="summary">Analysis Completed Successfully</p>
         {% for side, data in results.items() %}
+        {% if side != "policy_type" %}
             <hr style="margin:40px 0;">
             <h2>{{ side }} VIEW</h2>
             <ul class="damage-list">
@@ -96,6 +97,7 @@
                 {% endif %}
             </ul>
             <img src="{{ url_for('static', filename=data.image) }}"class="result-image"width="800">
+        {% endif %}
         {% endfor %}
         <br><br>
         <a href="/download-report">
