@@ -27,8 +27,24 @@ damage_model = YOLO("models/damage_model.pt") #Damage detection model
 parts_model = YOLO("models/parts_model.pt") #Part detection model
 severity_model = load_model("models/efficientnetb0_car_damage_severity.keras")# Severity datection model
 
+#Opening json Files
 with open("class_names.json","r") as f:
     class_names = json.load(f)
+
+with open("insurance_costs/Raw_cost.json","r") as f:
+    RAW_COSTS = json.load(f)
+
+with open("insurance_costs/Third_party_policy.json","r") as f:
+    THIRD_PARTY = json.load(f)
+
+with open("insurance_costs/Policy A.json","r") as f:
+    POLICY_A = json.load(f)
+
+with open("insurance_costs/Policy B.json","r") as f:
+    POLICY_B = json.load(f)
+
+with open("insurance_costs/Policy C.json","r") as f:
+    POLICY_C = json.load(f)
 
 damage_colors = {
 
@@ -310,6 +326,33 @@ def get_damaged_parts(data):
 
     return damaged_parts
 
+#Used for policy covers
+def get_policy_json(policy_type):
+
+    policies = {
+        "third_party": THIRD_PARTY,
+        "policy_a": POLICY_A,
+        "policy_b": POLICY_B,
+        "policy_c": POLICY_C
+    }
+
+    return policies.get(policy_type, THIRD_PARTY)
+
+
+def calculate_damage_cost(damage_name,severity,policy_type):
+
+    key = f"{damage_name}_{severity.lower()}"
+
+    raw_cost = RAW_COSTS.get(key, 0)
+
+    policy_json = get_policy_json(policy_type)
+
+    covered_amount = policy_json.get(key, 0)
+
+    customer_payable = max(0,raw_cost - covered_amount)
+
+    return (raw_cost,covered_amount,customer_payable)
+
 @app.route("/")
 def home():
     return render_template("Front.html") #Initial Home page
@@ -323,6 +366,7 @@ def classification():
     left_file = request.files["left"]
     right_file = request.files["right"]
     top_file = request.files.get("top") # Get the file from the frontend
+    policy_type = request.form["policy_type"] #Get the policy type
 
     vehicle_views = {"FRONT": front_file,"BACK": back_file,"LEFT": left_file,"RIGHT": right_file}
 
@@ -337,6 +381,7 @@ def classification():
     global inspection_results
 
     inspection_results = {}
+    inspection_results["policy_type"] = policy_type
 
     if top_file and top_file.filename != "":
         vehicle_views["TOP"] = top_file
@@ -350,15 +395,27 @@ def classification():
 @app.route("/download-report")
 def download_report():
     global inspection_results
+    # ============================================================
+    # PDF SETUP & GLOBAL STYLES
+    # Controls:
+    # - PDF filename
+    # - Title styling
+    # - Section heading styling
+    # ============================================================
     pdf_path = "Damage_Report.pdf"
     doc = SimpleDocTemplate(pdf_path)
     styles = getSampleStyleSheet()
 
     title_style = ParagraphStyle("TitleStyle",parent=styles["Title"],fontSize=24,textColor=colors.HexColor("#1F4E79"),alignment=TA_CENTER)
     section_style = ParagraphStyle("SectionStyle",parent=styles["Heading2"],fontSize=18,textColor=colors.HexColor("#3F6625"))
-
     elements = []
-
+    # ============================================================
+    # REPORT COVER / HEADER SECTION
+    # Controls:
+    # - Report title
+    # - Subtitle
+    # - Generated timestamp
+    # ============================================================
     elements.append(Paragraph("AI VEHICLE DAMAGE INSPECTION REPORT",title_style))
 
     elements.append(Spacer(1,15))
@@ -373,13 +430,23 @@ def download_report():
 
     summary_data = [["Vehicle Side", "Damage Status", "Damage Count"]]
 
-    elements.append(Spacer(1,20))
+    policy_type = inspection_results.get("policy_type","third_party")
 
+    sides = [(side,data) for side,data in inspection_results.items() if side != "policy_type"]
+
+    elements.append(Spacer(1,20))
+    # ============================================================
+    # REPORT OVERVIEW SECTION
+    # Controls:
+    # - Vehicle views listed
+    # - AI models listed
+    # - Overall damage summary table
+    # ============================================================
     elements.append(Paragraph("VEHICLE VIEWS ANALYSED",section_style))
 
     elements.append(Spacer(1,10))
 
-    for side in inspection_results.keys():
+    for side,_ in sides:
         elements.append(Paragraph(f"✓ {side}",styles["BodyText"]))
     
     elements.append(Paragraph("AI MODELS USED",section_style))
@@ -397,9 +464,19 @@ def download_report():
     elements.append(Spacer(1,10))
 
     total_damage_count = 0
-
-    sides = list(inspection_results.items())
-
+    total_raw_cost = 0
+    total_covered_cost = 0
+    total_customer_cost = 0
+    # ============================================================
+    # PER-VIEW ANALYSIS SECTION
+    # One page generated for each vehicle side.
+    #
+    # Controls:
+    # - Annotated image size
+    # - Component table
+    # - Severity colouring
+    # - Cost table
+    # ============================================================
     for index,(side,data) in enumerate(sides):
 
         damage_count = len(data["damages"])
@@ -451,6 +528,18 @@ def download_report():
 
             damage_name = item["damage"]
 
+            raw_cost,\
+            covered_cost,\
+            customer_cost = calculate_damage_cost(
+                damage_name,
+                item["severity"],
+                policy_type
+            )
+
+            total_raw_cost += raw_cost
+            total_covered_cost += covered_cost
+            total_customer_cost += customer_cost
+
             # Ambiguous classes -> IoU mapping
 
             if damage_name in AMBIGUOUS_CLASSES:
@@ -497,9 +586,8 @@ def download_report():
         for damaged in damaged_parts:
             all_components.add(damaged)
 
-        table_data = [
-            ["Component", "Status", "Severity"]
-        ]
+        table_data = [["Component", "Status", "Severity"]]
+
         for part in sorted(all_components):
 
             status = (
@@ -516,12 +604,7 @@ def download_report():
                     part,
                     "-"
                 )
-            print(
-    f"{side} | "
-    f"Part={part} | "
-    f"Status={status} | "
-    f"Severity={severity}"
-)
+            print(f"{side} | "f"Part={part} | "f"Status={status} | "f"Severity={severity}")
             table_data.append([
                 part,
                 status,
@@ -534,7 +617,16 @@ def download_report():
             table_data,
             colWidths=[180,120,100]
         )
-
+        # ------------------------------------------------------------
+        # COMPONENT TABLE COLOURS
+        #
+        # Severe   -> Red
+        # Moderate -> Orange
+        # Minor    -> Green
+        # No Damage-> Light Green
+        #
+        # Change colours here.
+        # ------------------------------------------------------------
         table_style = [
             ('BACKGROUND',(0,0),(-1,0),colors.darkblue),
             ('TEXTCOLOR',(0,0),(-1,0),colors.white),
@@ -596,42 +688,149 @@ def download_report():
         )
 
         elements.append(table)
+        cost_data = [["Damage", "Severity", "Raw Cost", "Covered", "Customer Pays"]]
 
-        elements.append(Spacer(1,20))
+        for item in data["damage_details"]:
+
+            raw_cost,\
+            covered_cost,\
+            customer_cost = calculate_damage_cost(
+                item["damage"],
+                item["severity"],
+                policy_type
+            )
+
+            cost_data.append([
+                display_names.get(
+                    item["damage"],
+                    item["damage"]
+                ),
+                item["severity"].title(),
+                f"Rs. {raw_cost:,}",
+                f"Rs. {covered_cost:,}",
+                f"Rs. {customer_cost:,}"
+            ])
+        # ------------------------------------------------------------
+        # DAMAGE COST TABLE
+        #
+        # Controls:
+        # - Raw repair cost display
+        # - Insurance covered amount
+        # - Customer payable amount
+        # - Column widths
+        # ------------------------------------------------------------
+        cost_table = Table(
+            cost_data,
+            colWidths=[140,90,90,90,90]
+        )
+
+        cost_table.setStyle(
+            TableStyle([
+                ('BACKGROUND',(0,0),(-1,0),colors.darkblue),
+                ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+                ('GRID',(0,0),(-1,-1),1,colors.black)
+            ])
+        )
+
+        elements.append(Spacer(1,10))
+        elements.append(cost_table)
+
         if index != len(sides)-1:
             elements.append(PageBreak())
-
-
-    elements.append(Spacer(1,20))
     elements.append(PageBreak())
-
-    elements.append(Paragraph("FINAL ASSESSMENT",section_style))
-
-    elements.append(Spacer(1,10))
-
+    # ============================================================
+    # FINAL ASSESSMENT PAGE
+    #
+    # Controls:
+    # - Total damages
+    # - Affected vehicle sides
+    # - Overall severity
+    # - Recommendation text
+    # ============================================================
+    elements.append(Paragraph("FINAL ASSESSMENT", section_style))
+    elements.append(Spacer(1,15))
     affected_sides = []
 
-    for side,data in inspection_results.items():
-
+    for side, data in sides:
         if len(data["damages"]) > 0:
-
             affected_sides.append(side)
 
-    severity = (
+    overall_severity = (
         "Low"
         if total_damage_count <= 2
         else "Moderate"
         if total_damage_count <= 5
-        else "High")
+        else "High"
+    )
+    assessment_data = [
+        ["Total Damage Instances", str(total_damage_count)],
+        ["Affected Vehicle Sides", ", ".join(affected_sides)],
+        ["Overall Severity", overall_severity],
+        ["Insurance Policy", policy_type.upper()]
+    ]
+    # ------------------------------------------------------------
+    # FINAL ASSESSMENT TABLE STYLING
+    #
+    # Left column background colour
+    # Table borders
+    # Font weight
+    # ------------------------------------------------------------
+    assessment_table = Table(
+        assessment_data,
+        colWidths=[220,250]
+    )
 
-    conclusion = f"""The AI inspection detected a total of{total_damage_count} damage instance(s).Affected Vehicle Sides:{', '.join(affected_sides)}
-        Estimated Visible Damage Severity:{severity}
-        Recommendation:
-        A detailed physical inspection should be
-        performed before final repair cost estimation
-        and insurance claim settlement.
-        """
-    elements.append(Paragraph(conclusion,styles["BodyText"]))
+    assessment_table.setStyle(
+        TableStyle([
+            ('GRID',(0,0),(-1,-1),1,colors.black),
+            ('BACKGROUND',(0,0),(0,-1),colors.HexColor("#D9EAD3")),
+            ('FONTNAME',(0,0),(0,-1),'Helvetica-Bold')
+        ])
+    )
+
+    elements.append(assessment_table)
+
+    elements.append(Spacer(1,15))
+
+    elements.append(PageBreak())
+    # ============================================================
+    # FINAL BILL PAGE
+    #
+    # Controls:
+    # - Total repair cost
+    # - Insurance contribution
+    # - Customer payable amount
+    #
+    # This is the last page of the report.
+    # ============================================================
+    elements.append(Paragraph("FINAL BILL SUMMARY",section_style))
+
+    bill_data = [["Description", "Amount"],["Total Repair Cost", f"Rs. {total_raw_cost:,}"],["Insurance Contribution", f"Rs. {total_covered_cost:,}"],["Customer Payable Amount", f"Rs. {total_customer_cost:,}"],["Policy Type", policy_type.upper()]]
+
+    bill_table = Table(bill_data,colWidths=[250,180])
+    # ------------------------------------------------------------
+    # BILL TABLE STYLING
+    #
+    # Header row colour
+    # Highlighted payable row colour
+    # Grid styling
+    # ------------------------------------------------------------
+    bill_table.setStyle(
+        TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.darkblue),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),
+            ('GRID',(0,0),(-1,-1),1,colors.black),
+
+            ('BACKGROUND',(0,-1),(-1,-1),colors.HexColor("#FFF2CC")),
+            ('FONTNAME',(0,-1),(-1,-1),'Helvetica-Bold')
+        ])
+    )
+
+    elements.append(bill_table)
+
+    elements.append(Spacer(1,20))
+    
 
     doc.build(elements)
 

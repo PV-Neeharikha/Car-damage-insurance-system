@@ -1,7 +1,7 @@
 from ultralytics import YOLO
 
-damage_model = YOLO("damage_model.pt")
-parts_model = YOLO("parts_model.pt")
+damage_model = YOLO("models/damage_model.pt")
+parts_model = YOLO("models/parts_model.pt")
 
 print(damage_model.names)
 print(" ")
