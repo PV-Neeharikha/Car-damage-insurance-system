@@ -1,0 +1,216 @@
+:root {
+    --primary-navy: #0A2947;
+    --cream-accent: #F3E4C9;
+    --muted-sage: #D3D4C0;
+    --luxury-bronze: #8B5E3C;
+    
+    --ios-blur: blur(30px);
+    --ios-radius-lg: 28px;
+    --ios-radius-md: 18px;
+    
+    --glass-shell-bg: rgba(10, 41, 71, 0.45);
+    --glass-card-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --inner-box-bg: rgba(255, 255, 255, 0.09); 
+}
+
+/* Completely refactored body to permanently kill the browser sub-pixel line glitch */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    
+    /* Using a base color first, then overlapping ultra-smooth ambient background textures */
+    background-color: #030A12; 
+    background-image: 
+        radial-gradient(circle at 80% 20%, rgba(139, 94, 60, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 15% 85%, rgba(211, 212, 192, 0.12) 0%, transparent 50%);
+    background-attachment: fixed;
+    
+    color: #FFFFFF;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Explicitly destroying any potential lingering pseudo elements */
+body::before, body::after,
+.upload-page1::before, .upload-page1::after {
+    display: none !important;
+    content: none !important;
+}
+
+.upload-page1 {
+    min-height: 100vh;
+    padding: 60px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.inspection-shell {
+    width: 100%;
+    max-width: 1100px;
+    padding: 50px 40px;
+    border-radius: var(--ios-radius-lg);
+    background: var(--glass-shell-bg);
+    backdrop-filter: var(--ios-blur);
+    -webkit-backdrop-filter: var(--ios-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: 
+        0 25px 60px -12px rgba(0, 0, 0, 0.7),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.hero-card1 {
+    margin-bottom: 45px;
+    text-align: center;
+}
+
+.hero-title1 {
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #F3E4C9;
+    margin: 0 0 12px 0;
+}
+
+.hero-subtitle1 {
+    font-size: 18px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.upload-grid1 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.upload-card1 {
+    background: var(--glass-card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--ios-radius-md);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.upload-card1:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(243, 228, 201, 0.35);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+.upload-card1 h3 {
+    margin: 0 0 16px 0;
+    font-size: 25px;
+    font-weight: 600;
+    color: var(--cream-accent);
+    text-align: center;
+    letter-spacing: 0.2px;
+}
+
+/* Maximized box brightness and text contrast */
+.file-upload-box1 {
+    border: 1.5px dashed rgba(255, 255, 255, 0.35); 
+    border-radius: 14px;
+    padding: 24px;
+    min-height: 110px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    background: var(--inner-box-bg);
+    transition: all 0.25s ease;
+}
+
+.file-upload-box1:hover {
+    background: rgba(255, 255, 255, 0.18); 
+    border-color: #FFFFFF;
+}
+
+.file-upload-box1 p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #FFFFFF; 
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.hidden-input1 {
+    display: none;
+}
+
+.file-name1 {
+    margin-top: 12px;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 12px;
+    background: var(--luxury-bronze);
+    padding: 5px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.upload-card1 select {
+    width: 100%;
+    height: 48px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: var(--inner-box-bg);
+    padding: 0 16px;
+    font-size: 14px;
+    color: #FFFFFF;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23F3E4C9'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.upload-card1 select:focus {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--cream-accent);
+}
+
+.upload-card1 select option {
+    background: #061524;
+    color: #FFFFFF;
+}
+
+.analyze-btn1 {
+    display: block;
+    margin: 40px auto 0 auto;
+    padding: 16px 54px;
+    border: none;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #040F1B;
+    background: var(--cream-accent);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+    box-shadow: 0 4px 20px rgba(243, 228, 201, 0.15);
+}
+
+.analyze-btn1:hover:not(:disabled) {
+    transform: translateY(-1px) scale(1.015);
+    background: #FFFFFF;
+    box-shadow: 0 8px 25px rgba(243, 228, 201, 0.3);
+}
+
+.analyze-btn1:disabled {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.25);
+    cursor: not-allowed;
+    box-shadow: none;
+}
