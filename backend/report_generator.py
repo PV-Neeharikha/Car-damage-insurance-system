@@ -444,10 +444,10 @@ def generate_pdf_report(inspection_results):
 
     elements.append(Spacer(1,20))
     
-    print("PDF SIZE =", os.path.getsize(pdf_path))
+    
     doc.build(elements)
 
     print("PDF PATH =", os.path.abspath(pdf_path))
     print("FILE EXISTS =", os.path.exists(pdf_path))
-
+    print("PDF SIZE =", os.path.getsize(pdf_path))
     return pdf_path

@@ -1,1 +1,7 @@
-[ ]
+[
+    {
+        "username": "admin",
+        "email": "admin@gamil.com",
+        "password": "admin123"
+    }
+]
