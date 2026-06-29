@@ -107,6 +107,13 @@ The application automatically generates a professional inspection report contain
 
 📥 **[View Sample Damage Report](sample_report/Damage_Report.pdf)**
 
+### Report Overview
+
+![Results 1](screenshots/report1.png)
+
+![Results 2](screenshots/report2.png)
+
+![Results 3](screenshots/report3.png)
 ---
 
 # 🛠️ Tech Stack
