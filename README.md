@@ -86,15 +86,9 @@ A full-stack AI-powered web application that automates vehicle damage assessment
 
 ![Results 1](screenshots/result_page1.png)
 
-### Damage Analysis
-
 ![Results 2](screenshots/result_page2.png)
 
-### Insurance Cost Estimation
-
 ![Results 3](screenshots/result_page3.png)
-
-### Final Assessment
 
 ![Results 4](screenshots/result_page4.png)
 
