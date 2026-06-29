@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate,Link } from "react-router-dom";
 import "./UploadPage.css";
 
 function App() {
@@ -169,6 +169,11 @@ function App() {
                     ? "Analyzing Vehicle..."
                     : "Start AI Inspection"}
             </button>
+            <Link to="/">
+            <button className="action-btn">
+                    Logout
+            </button>
+            </Link>
             </div>
         </div>
 

@@ -145,12 +145,16 @@ function ResultsPage() {
 
       <button className="action-btn primary-btn" onClick={handleDownload}>Download Report</button>
 
-      <Link to="/">
+      <Link to="/upload">
         <button className="action-btn">
           Analyze Another Vehicle
         </button>
       </Link>
-
+        <Link to="/">
+            <button className="action-btn">
+                    Logout
+            </button>
+            </Link>
     </div>
 
   </div>

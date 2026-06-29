@@ -1,12 +1,14 @@
 from flask import Flask, request, jsonify, send_file
-
+import re
 import cv2
 import os
 
 from reportlab.platypus import (SimpleDocTemplate,Paragraph,Spacer,Image,Table,TableStyle,PageBreak)
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
-
+import json
+import os
+from werkzeug.security import generate_password_hash
 from datetime import datetime
 
 from reportlab.lib.enums import TA_CENTER
@@ -29,6 +31,148 @@ CORS(app)
 
 inspection_results = {}
 
+USERS_FILE = "backend/users.json"
+
+@app.route("/login", methods=["POST"])
+def login():
+
+    data = request.get_json()
+
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+
+    with open(USERS_FILE, "r") as f:
+        users = json.load(f)
+
+    for user in users:
+
+        if (
+            user["email"].strip() == email and
+            user["password"].strip() == password
+        ):
+
+            print("LOGIN SUCCESS")
+
+            return jsonify({
+                "success": True,
+                "username": user["username"]
+            })
+
+    print("LOGIN FAILED")
+
+    return jsonify({
+        "success": False,
+        "message": "Invalid credentials"
+    })
+
+@app.route("/signup", methods=["POST"])
+def signup():
+
+    data = request.get_json()
+
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+
+    # Empty field validation
+    if not username:
+        return jsonify({
+            "success": False,
+            "message": "Username is required"
+        })
+
+    if not email:
+        return jsonify({
+            "success": False,
+            "message": "Email is required"
+        })
+
+    if not password:
+        return jsonify({
+            "success": False,
+            "message": "Password is required"
+        })
+
+    # Email validation
+    email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+
+    if not re.match(email_regex, email):
+        return jsonify({
+            "success": False,
+            "message": "Invalid email format"
+        })
+
+    # Password validation
+    if len(password) < 8:
+        return jsonify({
+            "success": False,
+            "message": "Password must be at least 8 characters"
+        })
+
+    # Load existing users
+    with open(USERS_FILE, "r") as f:
+        users = json.load(f)
+
+    # Duplicate username/email check
+    for user in users:
+
+        if user["username"].lower() == username.lower():
+            return jsonify({
+                "success": False,
+                "message": "Username already exists"
+            })
+
+        if user["email"].lower() == email.lower():
+            return jsonify({
+                "success": False,
+                "message": "Email already exists"
+            })
+
+    # Add new user
+    users.append({
+        "username": username,
+        "email": email,
+        "password": password
+    })
+
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=4)
+
+    return jsonify({
+        "success": True,
+        "message": "Account created successfully"
+    })
+
+    data = request.get_json()
+
+    username = data.get("username")
+    email = data.get("email")
+    password = data.get("password")
+
+    with open(USERS_FILE, "r") as f:
+        users = json.load(f)
+
+    # Check if email already exists
+    for user in users:
+        if user["email"] == email:
+            return jsonify({
+                "success": False,
+                "message": "Email already exists"
+            })
+
+    users.append({
+        "username": username,
+        "email": email,
+        "password": password
+    })
+
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=4)
+
+    return jsonify({
+        "success": True,
+        "message": "Account created successfully"
+    })
 
 @app.route("/")
 def home():

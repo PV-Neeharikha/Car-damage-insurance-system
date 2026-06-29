@@ -1,0 +1,10 @@
+Flask
+flask-cors
+opencv-python
+numpy
+pandas
+ultralytics
+tensorflow
+keras
+Pillow
+reportlab
